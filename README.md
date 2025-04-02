@@ -20,7 +20,7 @@ The project is organized as follows:
 1. Clone the repository:
    ```
    git clone https://github.com/seoooa/tomato-robot-demo.git
-   cd tomato-picker-demo
+   cd tomato-robot-demo
    ```
 
 2. Install dependencies using pipenv:
@@ -36,7 +36,7 @@ The project is organized as follows:
 ## Demo
 
 ### Tomato Picker App
-   Execute `tomato_picker_app.py` in the `demo`
+   Execute `tomato_robot_app.py` in the `demo`
    ```
-   python demo/tomato_picker_app.py
+   python demo/tomato_robot_app.py
    ```
