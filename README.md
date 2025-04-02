@@ -38,5 +38,5 @@ The project is organized as follows:
 ### Tomato Robot App
    Execute `tomato_robot_app.py` in the `script`
    ```
-   python demo/tomato_robot_app.py
+   python script/tomato_robot_app.py
    ```
