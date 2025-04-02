@@ -40,3 +40,6 @@ The project is organized as follows:
    ```
    python script/tomato_robot_app.py
    ```
+
+<img src="./assets/demo1.gif" width="880">
+<img src="./assets/demo2.gif" width="880">
