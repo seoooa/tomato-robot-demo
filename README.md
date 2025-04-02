@@ -35,7 +35,7 @@ The project is organized as follows:
 
 ## Demo
 
-### Tomato Picker App
+### Tomato Robot App
    Execute `tomato_robot_app.py` in the `demo`
    ```
    python demo/tomato_robot_app.py
