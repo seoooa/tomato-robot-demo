@@ -45,7 +45,7 @@ The project is organized as follows:
    <p align="center">
 
    #### Preview
-   <img src="./assets/demo1.gif" width="880">
-   <img src="./assets/demo2.gif" width="880">
+   <img src="./asset/demo1.gif" width="880">
+   <img src="./asset/demo2.gif" width="880">
    </p>
    </div>
