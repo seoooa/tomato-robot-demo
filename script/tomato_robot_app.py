@@ -16,6 +16,11 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 hand_tracker = HandTracker()
 robot_controller = RobotSequenceController()
 
+zoom_scale = 1.0
+MIN_ZOOM = 1.0
+MAX_ZOOM = 3.0
+ZOOM_STEP = 0.1
+
 thread_running = False
 frame = None
 robot_ready = False
@@ -28,7 +33,7 @@ current_point_coord = None
 
 @socketio.on('key_press')
 def handle_key_press(data):
-    global mode, current_point_coord
+    global mode, current_point_coord, zoom_scale
     key = data.get('key')
     
     if key == 'l':
@@ -40,15 +45,24 @@ def handle_key_press(data):
         hand_tracker.current_tomato_id = None
         print("Changed to inference mode")
         socketio.emit('mode_change', {'mode': 'inference'})
+    elif key == '+' or key == '=':
+        print("Zoom in")
+        zoom_scale = min(zoom_scale + ZOOM_STEP, MAX_ZOOM)
+        print(f"Zoom scale: {zoom_scale:.1f}x")
+    elif key == '-' or key == '_': 
+        print("Zoom out")
+        zoom_scale = max(zoom_scale - ZOOM_STEP, MIN_ZOOM)
+        print(f"Zoom scale: {zoom_scale:.1f}x")
     elif key in ['1', '2', '3', '4'] and mode == 'logging' and current_point_coord is not None:
         tomato_id = int(key)
-        hand_tracker.save_tomato_coordinate(tomato_id, current_point_coord)
-        print(f"Saved current point coordinates for tomato #{tomato_id} : {current_point_coord}")
-        socketio.emit('coordinate_saved', {'tomato_id': tomato_id})
+
+        hand_tracker.save_tomato_coordinate(tomato_id, current_point_coord, zoom_scale)
+        print(f"Saved coordinates for tomato #{tomato_id}: {current_point_coord} (zoom: {zoom_scale:.1f}x)")
+        socketio.emit('coordinate_saved', {'tomato_id': tomato_id, 'zoom_scale': zoom_scale})
 
 def process_video():
     global thread_running, frame, robot_ready, robot_executing, last_hand_detection_time, completion_message_start, showing_completion
-    global mode, current_point_coord
+    global mode, current_point_coord, zoom_scale
     
     cap = cv2.VideoCapture(0)
     thread_running = True
@@ -65,11 +79,42 @@ def process_video():
     #     print("[Error] failed to connect to robot controller")
     #     robot_control = False
     
+    saved_zoom_scales = []
+    for tomato_id in range(1, 5):
+        tomato_key = f"tomato_{tomato_id}"
+        if (tomato_key in hand_tracker.tomato_coordinates and 
+            hand_tracker.tomato_coordinates[tomato_key]["center"] is not None and
+            "zoom_scale" in hand_tracker.tomato_coordinates[tomato_key]["center"]):
+            saved_zoom_scales.append(hand_tracker.tomato_coordinates[tomato_key]["center"]["zoom_scale"])
+    
+    if saved_zoom_scales:
+        zoom_scale = sum(saved_zoom_scales) / len(saved_zoom_scales)
+        print(f"[INFO] Loaded zoom scale from saved coordinates: {zoom_scale:.2f}x")
+    else:
+        zoom_scale = 1.0
+        print("[INFO] No saved zoom scale found, using default: 1.0x")
+
     while thread_running:
         ret, frame = cap.read()
         if not ret:
             print("[Error] failed to read frame")
             break
+        
+        # Apply zoom to the frame
+        if zoom_scale != 1.0:
+            height, width = frame.shape[:2]
+            center_x, center_y = width // 2, height // 2
+            
+            new_width = int(width / zoom_scale)
+            new_height = int(height / zoom_scale)
+            
+            x1 = center_x - new_width // 2
+            y1 = center_y - new_height // 2
+            x2 = x1 + new_width
+            y2 = y1 + new_height
+            
+            frame = frame[y1:y2, x1:x2]
+            frame = cv2.resize(frame, (width, height))
 
         debug_image = frame.copy()
         current_time = time.time()

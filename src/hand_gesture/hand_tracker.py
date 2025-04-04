@@ -63,7 +63,11 @@ class HandTracker:
 
     def _create_initial_structure(self):
         """create the initial data structure"""
-        initial_data = {f"tomato_{i}": {"coordinates": [], "center": None} for i in range(1, 5)}
+        initial_data = {f"tomato_{i}": {
+            "coordinates": [], 
+            "center": None,
+            "zoom_scale": 1.0
+        } for i in range(1, 5)}
         
         os.makedirs(os.path.dirname(self.tomato_coords_file), exist_ok=True)
         
@@ -72,14 +76,15 @@ class HandTracker:
         
         return initial_data
     
-    def save_tomato_coordinate(self, tomato_id, point_coords):
-        """save the tomato pointing coordinates"""
+    def save_tomato_coordinate(self, tomato_id, point_coords, zoom_scale=1.0):
+        """save the tomato pointing coordinates with zoom scale"""
         if not isinstance(tomato_id, int) or not (1 <= tomato_id <= 4):
             return False
             
         coord = {
             "x": int(point_coords[0]),
             "y": int(point_coords[1]),
+            "zoom_scale": zoom_scale,
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         
@@ -93,17 +98,19 @@ class HandTracker:
         return True
     
     def _update_tomato_center(self, tomato_id):
-        """update the average center coordinates of the tomato"""
+        """update the average center coordinates and zoom scale of the tomato"""
         tomato_key = f"tomato_{tomato_id}"
         coords = self.tomato_coordinates[tomato_key]["coordinates"]
         
         if coords:
             x_mean = sum(c["x"] for c in coords) / len(coords)
             y_mean = sum(c["y"] for c in coords) / len(coords)
+            zoom_mean = sum(c.get("zoom_scale", 1.0) for c in coords) / len(coords)
             
             self.tomato_coordinates[tomato_key]["center"] = {
                 "x": int(x_mean),
-                "y": int(y_mean)
+                "y": int(y_mean),
+                "zoom_scale": zoom_mean
             }
     
     def find_nearest_tomato(self, current_point):
@@ -117,8 +124,9 @@ class HandTracker:
             
             if center:
                 dist = np.sqrt(
-                    (current_point[0] - center["x"])**2 + 
-                    (current_point[1] - center["y"])**2
+                    # (current_point[0] - center["x"])**2 + 
+                    # (current_point[1] - center["y"])**2
+                    (current_point[0] - center["x"])**2
                 )
                 if dist < min_dist:
                     min_dist = dist

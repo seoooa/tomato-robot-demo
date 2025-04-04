@@ -613,6 +613,7 @@
                 }
             } else {
                 if (document.getElementById('stream-screen').style.display === 'block') {
+                    lastMatchedId = null;
                     document.getElementById('title').innerHTML = 
                         '<p>수확하고자 하는 <span style="background-color: rgba(0, 4, 255, 0.1); padding: 5px; border-radius: 25px;">토마토</span>를 손으로 가리켜주세요 👆🏻</p>';
                 } else {
@@ -631,6 +632,12 @@
             // l key always works (for mode switching)
             if (event.key.toLowerCase() === 'l') {
                 socket.emit('key_press', { key: 'l' });
+                return;
+            }
+            
+            // zoom in/out
+            if (event.key === '+' || event.key === '=' || event.key === '-' || event.key === '_') {
+                socket.emit('key_press', { key: event.key });
                 return;
             }
             
