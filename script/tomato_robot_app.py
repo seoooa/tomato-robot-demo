@@ -162,7 +162,7 @@ def process_video():
                                         'selection_time': selection_duration,
                                         'status': 'detecting'
                                     })
-                                elif selection_duration < 4.5:
+                                elif selection_duration < 3.5:
                                     socketio.emit('tomato_match_result', {
                                         'matched_id': nearest_tomato,
                                         'selection_time': selection_duration,

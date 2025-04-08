@@ -310,6 +310,8 @@
     <audio id="popSound" src="{{ url_for('static', filename='audio/pop.mp3') }}" preload="auto"></audio>
     <audio id="alertSound" src="{{ url_for('static', filename='audio/alert.mp3') }}" preload="auto"></audio>
     <audio id="successSound" src="{{ url_for('static', filename='audio/success.mp3') }}" preload="auto"></audio>
+    <audio id="tickSound" src="{{ url_for('static', filename='audio/ticks.mp3') }}" preload="auto"></audio>
+    <audio id="guideSound" src="{{ url_for('static', filename='audio/guide_male.mp3') }}" preload="auto"></audio>
     
     <div class="background-circle" id="circle1"></div>
     <div class="background-circle" id="circle2"></div>
@@ -365,10 +367,13 @@
         var videoEnabled = localStorage.getItem('videoEnabled') !== 'false';
         let currentMode = 'inference';
         
+        let isTickSoundPlaying = false;
+        let countdownStarted = false;
+        
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('video-toggle').checked = videoEnabled;
             
-            const sounds = ['popSound', 'alertSound', 'successSound'];
+            const sounds = ['popSound', 'alertSound', 'successSound', 'tickSound', 'guideSound'];
             sounds.forEach(soundId => {
                 const audio = document.getElementById(soundId);
                 audio.load();
@@ -450,6 +455,13 @@
                 if (data.resumed) {
                     console.log("Stream resumed");
                     toggleUI(true);
+                    
+                    // When the hand is detected again, play the guide sound
+                    const guideSound = document.getElementById('guideSound');
+                    guideSound.currentTime = 0;
+                    guideSound.play().catch(function(error) {
+                        console.log("Guide sound play failed:", error);
+                    });
                 }
             } else if (data.timeout) {
                 console.log("Hand not detected for 5 seconds, stream paused");
@@ -476,10 +488,15 @@
             if (data.matched_id === null || data.matched_id !== currentMatchedTomatoId) {
                 if (currentMatchedTomatoId !== null) {
                     window.updateTomatoHighlight(currentMatchedTomatoId, false);
+                    
+                    if (isTickSoundPlaying) {
+                        stopTickSound();
+                    }
                 }
                 
                 sameIdDuration = 0;
                 harvestingTomato = false;
+                countdownStarted = false;
                 currentMatchedTomatoId = data.matched_id;
                 if (currentMatchedTomatoId !== null) {
                     lastMatchedTomatoTime = now;
@@ -489,8 +506,13 @@
             else if (data.matched_id === currentMatchedTomatoId) {
                 sameIdDuration = now - lastMatchedTomatoTime;
                 
-                if (sameIdDuration >= 4500 && !harvestingTomato) {
+                if (sameIdDuration >= 3500 && !harvestingTomato) {
                     harvestingTomato = true;
+                    
+                    if (isTickSoundPlaying) {
+                        stopTickSound();
+                    }
+                    
                     alertSound.currentTime = 0;
                     alertSound.play().catch(function(error) {
                         console.log("Alert sound play failed:", error);
@@ -590,13 +612,19 @@
                         `<p><span style="background-color: rgba(0, 4, 255, 0.1); padding: 5px; border-radius: 25px;">${currentMatchedTomatoId}번 토마토</span>를 수확 중입니다... ✂️</p>`;
                 } 
                 else if (sameIdDuration >= 1500) {
-                    if (sameIdDuration < 4500) {
+                    if (sameIdDuration < 3500) {
+                        // Play the tick sound
+                        if (!countdownStarted) {
+                            startTickSound();
+                            countdownStarted = true;
+                        }
+                        
                         const { container, progressCircle, circumference, numberSpan } = createCountdownCircle();
-                        const progress = (sameIdDuration - 1500) / 3000;
+                        const progress = (sameIdDuration - 1500) / 2000;
                         const offset = circumference * (1 - progress);
                         progressCircle.style.strokeDashoffset = offset;
                         
-                        const remainingTime = Math.ceil((4.5 - sameIdDuration/1000));
+                        const remainingTime = Math.ceil((3.5 - sameIdDuration/1000));
                         numberSpan.textContent = remainingTime;
                         
                         const titleElement = document.createElement('p');
@@ -608,14 +636,26 @@
                     }
                 }
                 else {
+                    // Stop the tick sound when the countdown is reset
+                    if (isTickSoundPlaying) {
+                        stopTickSound();
+                        countdownStarted = false;
+                    }
+                    
                     document.getElementById('title').innerHTML = 
                         `<p><span style="background-color: rgba(0, 4, 255, 0.1); padding: 5px; border-radius: 25px;">${currentMatchedTomatoId}번 토마토</span>가 맞으신가요? 🤔</p>`;
                 }
             } else {
+                // Stop the tick sound when the tomato selection is cleared
+                if (isTickSoundPlaying) {
+                    stopTickSound();
+                    countdownStarted = false;
+                }
+                
                 if (document.getElementById('stream-screen').style.display === 'block') {
                     lastMatchedId = null;
                     document.getElementById('title').innerHTML = 
-                        '<p>수확하고자 하는 <span style="background-color: rgba(0, 4, 255, 0.1); padding: 5px; border-radius: 25px;">토마토</span>를 손으로 가리켜주세요 👆🏻</p>';
+                        '<p>수확하고자 하는 <span style="background-color: rgba(0, 4, 255, 0.1); padding: 5px; border-radius: 25px;">토마토</span>를 손으로 <span style="background-color: rgba(0, 4, 255, 0.1); padding: 5px; border-radius: 25px;">계속</span> 가리켜주세요 👆🏻</p>';
                 } else {
                     document.getElementById('title').innerHTML = '<p>안녕하세요🙌</p>';
                 }
@@ -647,7 +687,7 @@
                 if (event.key === 'Escape') {
                     socket.emit('key_press', { key: 'Escape' });
                 }
-                // 1-4 키
+                // 1-4 key
                 else if (['1', '2', '3', '4'].includes(event.key)) {
                     socket.emit('key_press', { key: event.key });
                 }
@@ -664,6 +704,26 @@
                 notification.style.display = 'none';
             }, 1500);
         });
+
+        // Start the tick sound
+        function startTickSound() {
+            if (!isTickSoundPlaying) {
+                const tickSound = document.getElementById('tickSound');
+                tickSound.currentTime = 0;
+                tickSound.play().catch(function(error) {
+                    console.log("Tick sound play failed:", error);
+                });
+                isTickSoundPlaying = true;
+            }
+        }
+
+        // Stop the tick sound
+        function stopTickSound() {
+            const tickSound = document.getElementById('tickSound');
+            tickSound.pause();
+            tickSound.currentTime = 0;
+            isTickSoundPlaying = false;
+        }
     </script>
     <script type="module">
         import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
@@ -1011,7 +1071,6 @@
                                     const elapsed = currentTime - startTime;
                                     const progress = Math.min(elapsed / duration, 1);
                                     
-                                    // easeOutQuad 이징 함수 적용
                                     const scale = startScale + (1 - startScale) * (1 - Math.pow(1 - progress, 2));
                                     child.parent.scale.set(scale, scale, scale);
 
