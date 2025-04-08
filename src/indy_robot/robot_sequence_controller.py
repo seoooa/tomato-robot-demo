@@ -6,7 +6,7 @@ from src.indy_robot.Dxl_controller import DynamixelController
 from src.indy_robot.indy_utils import indydcp_client as client
 
 class RobotSequenceController:
-    def __init__(self, robot_ip="192.168.0.2", robot_name="NRMK-Indy7", wp_dir="src/indy_robot/WP_V2"):
+    def __init__(self, robot_ip="192.168.0.2", robot_name="NRMK-Indy7", wp_dir="src/indy_robot/WP_Lab_V2"):
         self.robot_ip = robot_ip
         self.robot_name = robot_name
         self.wp_dir = wp_dir
